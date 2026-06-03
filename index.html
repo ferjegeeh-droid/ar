@@ -3,30 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARVIX PRO | 120FPS</title>
+    <title>ARVIX | INSTANT STREAM PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;900&display=swap" rel="stylesheet">
     <style>
         body { background: #000; color: #fff; font-family: 'Tajawal', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
         .glass { background: rgba(15, 15, 15, 0.95); border: 1px solid #222; border-radius: 45px; }
-        video { border-radius: 25px; border: 1px solid #333; width: 100%; background: #000; margin-top: 15px; }
-        .shimmer { animation: shimmer 2s infinite linear; background: linear-gradient(90deg, #38bdf8, #818cf8, #38bdf8); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        @keyframes shimmer { to { background-position: 200% center; } }
+        .shimmer { color: #38bdf8; font-weight: 900; letter-spacing: -0.05em; }
+        video { border-radius: 20px; border: 1px solid #333; width: 100%; margin-top: 15px; background: #000; }
+        .btn-download { background: #fff; color: #000; transition: transform 0.2s; }
+        .btn-download:active { transform: scale(0.95); }
     </style>
 </head>
 <body class="p-6">
-    <div class="glass p-8 w-full max-w-sm text-center shadow-2xl">
-        <h1 class="text-5xl font-black shimmer mb-2 tracking-tighter">ARVIX</h1>
-        <p class="text-gray-600 text-[9px] tracking-[0.4em] mb-8 uppercase font-bold">INSTANT STREAM PRO</p>
 
-        <!-- واجهة الرفع -->
+    <div class="glass p-8 w-full max-w-sm text-center shadow-2xl">
+        <!-- Header -->
+        <h1 class="text-5xl shimmer mb-1">ARVIX</h1>
+        <p class="text-gray-500 text-[9px] tracking-[0.4em] mb-10 uppercase font-bold">INSTANT STREAM PRO</p>
+
+        <!-- واجهة البداية -->
         <div id="ui-upload">
             <input type="file" id="vidFile" class="hidden" accept="video/*">
             <div onclick="document.getElementById('vidFile').click()" class="border-2 border-dashed border-sky-900/30 p-12 rounded-[35px] mb-8 bg-sky-500/5 cursor-pointer active:scale-95 transition-all">
                 <span class="text-5xl block mb-4">🚀</span>
-                <p class="text-sky-400 font-bold text-xs uppercase">اختر الفيديو للمعالجة</p>
+                <p class="text-sky-400 font-bold text-xs">اختر الفيديو</p>
             </div>
-            <button onclick="startProProcess()" class="w-full bg-sky-600 py-5 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all">بدء المعالجة ⚡</button>
+            <button onclick="startProcessing()" class="w-full bg-sky-600 py-5 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all">بدء المعالجة ⚡</button>
         </div>
 
         <!-- واجهة الانتظار -->
@@ -35,26 +38,29 @@
             <p class="text-sky-500 font-bold italic animate-pulse">جاري المعالجة السحابية...</p>
         </div>
 
-        <!-- واجهة النتيجة (نفس اللي بالصورة) -->
+        <!-- واجهة النتيجة (نفس الصورة تماماً) -->
         <div id="ui-result" class="hidden">
-            <h2 class="text-xl font-black text-green-500 mb-2">✨ اكتملت المعالجة! ✨</h2>
+            <h2 class="text-xl font-black text-green-500 mb-4 tracking-tight">✨ اكتملت المعالجة! ✨</h2>
             
+            <!-- مشغل المعاينة الفورية -->
             <video id="player" controls playsinline></video>
             
             <p class="text-gray-500 text-[10px] mt-4 mb-6">يمكنك مشاهدة النتيجة الآن مباشرة</p>
             
-            <a id="dlLink" href="#" download class="block w-full bg-white text-black py-5 rounded-2xl font-black text-lg shadow-2xl text-center mb-4 transition-transform active:scale-95">
-                تنزيل للمستودع 📥
-            </a>
-            
-            <button onclick="location.reload()" class="text-gray-700 text-[10px] font-bold uppercase tracking-widest">فيديو آخر</button>
+            <div class="flex flex-col gap-4">
+                <a id="dlBtn" href="#" download class="btn-download block w-full py-5 rounded-2xl font-black text-xl shadow-2xl text-center">
+                    تنزيل للمستودع 📥
+                </a>
+                <button onclick="location.reload()" class="text-gray-600 text-[10px] font-bold uppercase tracking-widest">فيديو آخر</button>
+            </div>
         </div>
     </div>
 
     <script>
-        async function startProProcess() {
-            const file = document.getElementById('vidFile').files[0];
-            if (!file) return alert("اختر فيديو!");
+        async function startProcessing() {
+            const fileInput = document.getElementById('vidFile');
+            const file = fileInput.files[0];
+            if (!file) return alert("اختر فيديو أولاً!");
 
             document.getElementById('ui-upload').classList.add('hidden');
             document.getElementById('ui-loading').classList.remove('hidden');
@@ -63,20 +69,27 @@
             formData.append('video', file);
 
             try {
-                const response = await fetch('/process', { method: 'POST', body: formData });
+                const response = await fetch('/process', { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                
                 const data = await response.json();
                 
                 if (data.downloadUrl) {
+                    // تشغيل الفيديو في المشغل فوراً
                     const player = document.getElementById('player');
                     player.src = data.downloadUrl;
                     
-                    document.getElementById('dlLink').href = data.downloadUrl;
+                    // إعداد زر التنزيل
+                    document.getElementById('dlBtn').href = data.downloadUrl;
                     
+                    // إظهار واجهة النتيجة
                     document.getElementById('ui-loading').classList.add('hidden');
                     document.getElementById('ui-result').classList.remove('hidden');
                 }
             } catch (e) {
-                alert("حدث خطأ، حاول مرة أخرى.");
+                alert("حدث خطأ في السيرفر، حاول مرة أخرى.");
                 location.reload();
             }
         }
