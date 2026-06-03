@@ -8,46 +8,53 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// --- خطوة الأمان: إنشاء المجلدات تلقائياً إذا كانت ناقصة ---
-const dirUploads = path.join(__dirname, 'uploads');
-const dirPublic = path.join(__dirname, 'public');
-
-if (!fs.existsSync(dirUploads)) fs.mkdirSync(dirUploads);
-if (!fs.existsSync(dirPublic)) fs.mkdirSync(dirPublic);
+// إنشاء المجلدات المطلوبة فوراً
+const dirs = ['uploads', 'public'];
+dirs.forEach(dir => {
+    if (!fs.existsSync(path.join(__dirname, dir))) {
+        fs.mkdirSync(path.join(__dirname, dir));
+    }
+});
 
 app.use(cors());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname)); // للبحث في المجلد الرئيسي أيضاً
 
 const upload = multer({ dest: 'uploads/' });
 
+// حل مشكلة Not Found - البحث عن ملف index.html وإرساله
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    const paths = [
+        path.join(__dirname, 'public', 'index.html'),
+        path.join(__dirname, 'index.html')
+    ];
+    
+    for (const p of paths) {
+        if (fs.existsSync(p)) {
+            return res.sendFile(p);
+        }
+    }
+    res.status(404).send('خطأ: لم يتم العثور على ملف index.html في GitHub. تأكد من وجود الملف بجانب server.js');
 });
 
 app.post('/process', upload.single('video'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    if (!req.file) return res.status(400).json({ error: 'No file' });
 
     const inputPath = req.file.path;
     const outputName = `ARVIX_PRO_${Date.now()}.mp4`;
     const outputPath = path.join(__dirname, 'public', outputName);
 
-    // أمر FFmpeg المصلح (يمنع زيادة الحجم الخيالية ويحذف الصوت لضمان السرعة)
-    // استخدمنا -y لإجبار الكتابة و -an لحذف الصوت و -map_metadata -1 لتصغير الحجم
+    // الكود البرقي المصلح (سريع + حجم صغير + بدون صوت للمقاطع الطويلة)
     const command = `ffmpeg -y -itsscale 2 -i "${inputPath}" -c copy -map_metadata -1 -fflags +genpts -an "${outputPath}"`;
 
     exec(command, (err) => {
         if (err) {
-            console.error('FFmpeg Error:', err);
+            console.error(err);
             return res.status(500).json({ error: 'Processing failed' });
         }
-        
         res.json({ downloadUrl: `/${outputName}` });
-
-        // تنظيف الملف الأصلي
-        fs.unlink(inputPath, (err) => { if(err) console.log(err); });
+        fs.unlink(inputPath, () => {});
     });
 });
 
-app.listen(port, () => {
-    console.log(`ARVIX PRO is alive on port ${port}`);
-});
+app.listen(port, () => console.log(`Server is running on ${port}`));
