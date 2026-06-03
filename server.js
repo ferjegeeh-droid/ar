@@ -8,53 +8,47 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// إنشاء المجلدات المطلوبة فوراً
-const dirs = ['uploads', 'public'];
-dirs.forEach(dir => {
-    if (!fs.existsSync(path.join(__dirname, dir))) {
-        fs.mkdirSync(path.join(__dirname, dir));
-    }
-});
-
 app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(__dirname)); // للبحث في المجلد الرئيسي أيضاً
 
+// إنشاء مجلدات العمل إذا لم تكن موجودة
+if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
+if (!fs.existsSync('public')) fs.mkdirSync('public');
+
+// إعداد مكان حفظ الملفات المرفوعة
 const upload = multer({ dest: 'uploads/' });
 
-// حل مشكلة Not Found - البحث عن ملف index.html وإرساله
+// خدمة الملفات من مجلد public
+app.use(express.static('public'));
+
+// --- هذا الجزء هو الحل لمشكلة "Cannot GET /" ---
+// إذا طلب المستخدم الصفحة الرئيسية، نرسل له ملف index.html
 app.get('/', (req, res) => {
-    const paths = [
-        path.join(__dirname, 'public', 'index.html'),
-        path.join(__dirname, 'index.html')
-    ];
-    
-    for (const p of paths) {
-        if (fs.existsSync(p)) {
-            return res.sendFile(p);
-        }
+    // يحاول السيرفر البحث عن الملف في المجلد الرئيسي أو داخل public
+    let indexPath = path.join(__dirname, 'public', 'index.html');
+    if (!fs.existsSync(indexPath)) {
+        indexPath = path.join(__dirname, 'index.html');
     }
-    res.status(404).send('خطأ: لم يتم العثور على ملف index.html في GitHub. تأكد من وجود الملف بجانب server.js');
+    res.sendFile(indexPath);
 });
 
 app.post('/process', upload.single('video'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file' });
+    if (!req.file) return res.status(400).json({ error: 'لا يوجد ملف' });
 
     const inputPath = req.file.path;
-    const outputName = `ARVIX_PRO_${Date.now()}.mp4`;
+    const outputName = `processed_${Date.now()}.mp4`;
     const outputPath = path.join(__dirname, 'public', outputName);
 
-    // الكود البرقي المصلح (سريع + حجم صغير + بدون صوت للمقاطع الطويلة)
-    const command = `ffmpeg -y -itsscale 2 -i "${inputPath}" -c copy -map_metadata -1 -fflags +genpts -an "${outputPath}"`;
+    // أمر FFmpeg لمعالجة الفيديو
+    const command = `ffmpeg -itsscale 2 -i ${inputPath} -c copy ${outputPath}`;
 
     exec(command, (err) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({ error: 'Processing failed' });
+            return res.status(500).json({ error: 'خطأ في المعالجة' });
         }
         res.json({ downloadUrl: `/${outputName}` });
         fs.unlink(inputPath, () => {});
     });
 });
 
-app.listen(port, () => console.log(`Server is running on ${port}`));
+app.listen(port, () => console.log(`ARVIX PRO running on port ${port}`));
