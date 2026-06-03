@@ -1,0 +1,4 @@
+node_modules
+uploads/*.mp4
+public/processed_*.mp4
+.DS_Store
