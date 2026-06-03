@@ -1,7 +1,6 @@
 {
-  "name": "arvix-pro-120fps",
+  "name": "arvix-pro",
   "version": "1.0.0",
-  "description": "ARVIX Video Processor",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
