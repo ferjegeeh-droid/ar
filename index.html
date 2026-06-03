@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARVIX PRO 120FPS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        body { background: #000; color: #fff; font-family: 'Tajawal', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .glass { background: rgba(10, 10, 10, 0.9); border: 1px solid #1a1a1a; border-radius: 40px; }
+        .shimmer { animation: shimmer 2s infinite linear; background: linear-gradient(90deg, #0ea5e9, #6366f1, #0ea5e9); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        @keyframes shimmer { to { background-position: 200% center; } }
+    </style>
+</head>
+<body class="p-6">
+    <div class="glass p-10 w-full max-w-sm text-center shadow-2xl">
+        <h1 class="text-5xl font-black shimmer mb-2">ARVIX PRO</h1>
+        <p class="text-gray-600 text-[9px] tracking-[0.5em] mb-10 uppercase font-bold">Cloud Processor</p>
+
+        <div id="ui-main">
+            <input type="file" id="vidFile" class="hidden" accept="video/*">
+            <div onclick="document.getElementById('vidFile').click()" class="border-2 border-dashed border-sky-900/30 p-12 rounded-[35px] mb-8 bg-sky-500/5 cursor-pointer active:scale-95 transition-all">
+                <span class="text-5xl block mb-4">☁️</span>
+                <p class="text-sky-400 font-bold text-xs uppercase">ارفع فيديو (أي حجم)</p>
+            </div>
+            <button onclick="startProcessing()" class="w-full bg-sky-600 py-5 rounded-2xl font-black text-lg shadow-xl">بدء المعالجة ⚡</button>
+        </div>
+
+        <div id="ui-loading" class="hidden">
+            <div class="w-12 h-12 border-4 border-sky-900 border-t-sky-500 rounded-full animate-spin mx-auto mb-6"></div>
+            <p class="text-sky-500 font-bold italic animate-pulse">جاري المعالجة على السيرفر...</p>
+        </div>
+
+        <div id="ui-result" class="hidden">
+            <div class="text-6xl mb-6 font-bold text-green-500">READY</div>
+            <a id="dlLink" href="#" download class="block w-full bg-white text-black py-5 rounded-2xl font-black text-lg mb-6 shadow-2xl">تنزيل المقطع 📥</a>
+            <button onclick="location.reload()" class="text-gray-500 text-[10px] font-bold uppercase tracking-widest border-b border-gray-900">فيديو آخر</button>
+        </div>
+    </div>
+
+    <script>
+        async function startProcessing() {
+            const file = document.getElementById('vidFile').files[0];
+            if (!file) return alert("اختر فيديو!");
+
+            document.getElementById('ui-main').classList.add('hidden');
+            document.getElementById('ui-loading').classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('video', file);
+
+            try {
+                const response = await fetch('/process', { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                if (data.downloadUrl) {
+                    document.getElementById('dlLink').href = data.downloadUrl;
+                    document.getElementById('ui-loading').classList.add('hidden');
+                    document.getElementById('ui-result').classList.remove('hidden');
+                } else {
+                    throw new Error();
+                }
+            } catch (e) {
+                alert("حدث خطأ في السيرفر، تأكد من رفع المجلد بشكل صحيح.");
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
